@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Principio de Saint-Venant — Torsión en barra hueca</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0f1117;color:#e0e0e0;font-family:system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+  #header{padding:10px 18px;border-bottom:1px solid #2a2a3a;display:flex;align-items:center;gap:16px;flex-shrink:0;background:#13151f}
+  #header h1{font-size:14px;font-weight:500;color:#fff;letter-spacing:0.02em}
+  #header span{font-size:12px;color:#666;margin-left:4px}
+  #canvas-wrap{flex:1;position:relative;min-height:0}
+  canvas{width:100%;height:100%;display:block}
+  #controls{padding:10px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 20px}
+  .ctrl{display:flex;flex-direction:column;gap:3px}
+  .ctrl label{font-size:11px;color:#888;display:flex;justify-content:space-between}
+  .ctrl label span{color:#ccc;font-weight:500}
+  input[type=range]{width:100%;accent-color:#e05030;height:3px;cursor:pointer}
+  #btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0}
+  button{font-size:11px;padding:4px 12px;background:transparent;border:1px solid #3a3a4a;color:#ccc;border-radius:5px;cursor:pointer;transition:background 0.15s}
+  button:hover{background:#2a2a3a}
+  button.active{border-color:#e05030;color:#e05030}
+  #legend{position:absolute;top:12px;right:14px;background:rgba(15,17,23,0.88);border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;font-size:11px;color:#999;pointer-events:none}
+  #legend strong{display:block;color:#ddd;margin-bottom:6px;font-size:12px}
+  #legend .bar{width:120px;height:7px;border-radius:2px;background:linear-gradient(to right,#1a4a8c,#2a7abf,#3db89a,#e8a020,#c0392b);margin:3px 0}
+  #legend .barlab{display:flex;justify-content:space-between;font-size:10px;color:#666}
+  #legend .items{margin-top:8px;border-top:1px solid #2a2a3a;padding-top:6px;display:flex;flex-direction:column;gap:3px}
+  #legend .item{display:flex;align-items:center;gap:6px;font-size:11px}
+  #legend .dot{width:18px;height:2px;border-radius:1px}
+  #info{position:absolute;bottom:12px;left:14px;font-size:11px;color:#555;pointer-events:none}
+  #phi-info{position:absolute;top:12px;left:14px;background:rgba(15,17,23,0.88);border:1px solid #2a2a3a;border-radius:8px;padding:8px 12px;font-size:11px;color:#aaa;pointer-events:none;min-width:160px}
+  #phi-info span{display:block;margin-top:2px;font-size:13px;color:#e8a020;font-weight:500}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Principio de Saint-Venant <span>— Torsión en barra circular hueca</span></h1>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="legend">
+    <strong>Esfuerzo cortante τ</strong>
+    <div class="bar"></div>
+    <div class="barlab"><span>Bajo</span><span>Alto</span></div>
+    <div class="items">
+      <div class="item"><div class="dot" style="background:#ffffff;opacity:0.2;width:18px;height:1px;border:1px dashed #555"></div> Rejilla sin deformar</div>
+      <div class="item"><div class="dot" style="background:#e8a020"></div> Rejilla deformada</div>
+      <div class="item"><div class="dot" style="background:#e05030"></div> Torque T aplicado</div>
+      <div class="item"><div class="dot" style="background:#555;border:1px solid #888"></div> Empotrado</div>
+    </div>
+  </div>
+  <div id="phi-info">
+    Giro máximo φ<sub>max</sub> (extremo libre)
+    <span id="phi-val">0.0° / 0.0000 rad</span>
+    <div style="font-size:10px;color:#555;margin-top:3px">Máx permitido: 15° / 0.2618 rad</div>
+  </div>
+  <div id="info">Clic + arrastrar: rotar &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Doble clic: reset cámara</div>
+</div>
+
+<div id="btns">
+  <button id="btnAnim" class="active">⏸ Pausar</button>
+  <button id="btnGrid" class="active">Ocultar rejilla</button>
+  <button id="btnBar" class="active">Ocultar barra</button>
+  <button id="btnSections">Mostrar secciones</button>
+</div>
+
+<div id="controls">
+  <div class="ctrl">
+    <label>Torque T <span id="tLab">10%</span></label>
+    <input type="range" id="sldT" min="0" max="100" value="10" step="1">
+  </div>
+  <div class="ctrl">
+    <label>Hueco interior <span id="wLab">40%</span></label>
+    <input type="range" id="sldW" min="0" max="95" value="40" step="1">
+  </div>
+  <div class="ctrl">
+    <label>Escala deformación <span id="dLab">6×</span></label>
+    <input type="range" id="sldD" min="1" max="15" value="6" step="1">
+  </div>
+  <div class="ctrl">
+    <label>Densidad rejilla <span id="gLab">12</span></label>
+    <input type="range" id="sldG" min="5" max="24" value="12" step="1">
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // tope DPR=2 para perf
+renderer.setClearColor(0x0f1117,1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38,1,0.01,200);
+
+const ambient = new THREE.AmbientLight(0xffffff,0.5);
+scene.add(ambient);
+const d1=new THREE.DirectionalLight(0xffffff,0.7); d1.position.set(5,8,5); scene.add(d1);
+const d2=new THREE.DirectionalLight(0xffffff,0.2); d2.position.set(-5,-4,-4); scene.add(d2);
+
+const L=3.4, Ro=0.38;
+let Ri=Ro*0.40, torque=0.1, defScale=6;
+let gridDensity=12;
+let animOn=true, showGrid=true, showBar=true, showSections=false;
+let animT=0;
+
+// ── Materiales cacheados — se reusan entre rebuilds, evitando asignaciones ──
+const matOuterBar  = new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.82,side:THREE.FrontSide});
+const matInnerBar  = new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.65,side:THREE.BackSide});
+const matCap       = new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+const matSection   = new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.80});
+const matGrid      = new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.88});
+const matFixed     = new THREE.MeshLambertMaterial({color:0x445566,transparent:true,opacity:0.88});
+const matFixedWire = new THREE.MeshBasicMaterial({color:0x334455,wireframe:true,transparent:true,opacity:0.3});
+const matFixedBar  = new THREE.MeshBasicMaterial({color:0x334455,transparent:true,opacity:0.5});
+const matArrow     = new THREE.MeshBasicMaterial({color:0xe05030});
+const matArrowRef  = new THREE.MeshBasicMaterial({color:0xe05030,transparent:true,opacity:0.18});
+// ─────────────────────────────────────────────────────────────────────────────
+
+const sph={theta:0.65, phi:1.08, r:9.5};
+const TARGET=new THREE.Vector3(0,0,0);
+
+function updateCam(){
+  camera.position.set(
+    sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),
+    sph.r*Math.cos(sph.phi),
+    sph.r*Math.sin(sph.phi)*Math.cos(sph.theta)
+  );
+  camera.lookAt(TARGET);
+}
+updateCam();
+
+function colormap(t){
+  t=Math.max(0,Math.min(1,t));
+  const stops=[[0,[0.10,0.29,0.55]],[0.25,[0.17,0.48,0.75]],[0.5,[0.24,0.72,0.60]],[0.75,[0.91,0.63,0.13]],[1.0,[0.75,0.22,0.17]]];
+  for(let i=0;i<stops.length-1;i++){
+    if(t>=stops[i][0]&&t<=stops[i+1][0]){
+      const tt=(t-stops[i][0])/(stops[i+1][0]-stops[i][0]);
+      const a=stops[i][1],b=stops[i+1][1];
+      return new THREE.Color(a[0]+(b[0]-a[0])*tt,a[1]+(b[1]-a[1])*tt,a[2]+(b[2]-a[2])*tt);
+    }
+  }
+  return new THREE.Color(0.75,0.22,0.17);
+}
+
+const MAX_ANGLE_RAD = 15 * Math.PI / 180;
+
+function twistAngle(yNorm){
+  const physicalAngle = torque * yNorm * MAX_ANGLE_RAD;
+  return physicalAngle * (defScale / 4);
+}
+
+function stressFactor(yNorm, rNorm){
+  if(torque <= 0.001) return 0;
+  const radial = rNorm;
+  const axial  = 0.50 + 0.50 * yNorm;
+  return Math.min(1, torque * radial * axial);
+}
+
+function deform(r, theta, y){
+  const yNorm=(y+L/2)/L;
+  const phi=twistAngle(yNorm);
+  return new THREE.Vector3(r*Math.cos(theta+phi), y, r*Math.sin(theta+phi));
+}
+
+let root=null;
+
+function rebuild(){
+  if(root){
+    scene.remove(root);
+    root.traverse(o=>{
+      if(o.geometry) o.geometry.dispose();
+      // materiales NO se disponen — están cacheados globalmente
+    });
+  }
+  root=new THREE.Group();
+
+  const phi_phys = torque * MAX_ANGLE_RAD;
+  const phi_deg  = (phi_phys * 180 / Math.PI).toFixed(1);
+  const phi_rad  = phi_phys.toFixed(4);
+  document.getElementById('phi-val').textContent = phi_deg + '° / ' + phi_rad + ' rad';
+
+  if(showBar)      buildBar();
+  if(showGrid)     buildGrid();
+  if(showSections) buildSections();
+  buildFixedEnd();
+  buildTorqueArrow();
+
+  scene.add(root);
+}
+
+// Resoluciones reducidas respecto al original (48→36, 72→50) para mejor fluidez
+const ANG=36, AX=50;
+
+function buildBar(){
+  function tube(radius, isInner){
+    const rNorm = radius / Ro;
+    const v=[],c=[],idx=[];
+    for(let iy=0;iy<=AX;iy++){
+      const y=-L/2+(iy/AX)*L, yn=iy/AX;
+      for(let ia=0;ia<=ANG;ia++){
+        const th=(ia/ANG)*Math.PI*2;
+        const p=deform(radius,th,y);
+        v.push(p.x,p.y,p.z);
+        const col=colormap(stressFactor(yn, rNorm));
+        c.push(col.r,col.g,col.b);
+      }
+    }
+    for(let iy=0;iy<AX;iy++){
+      for(let ia=0;ia<ANG;ia++){
+        const a=iy*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
+        if(isInner){idx.push(a,cc,b,b,cc,d);}else{idx.push(a,b,cc,b,d,cc);}
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+    g.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+  root.add(new THREE.Mesh(tube(Ro,false), matOuterBar));
+  root.add(new THREE.Mesh(tube(Ri,true),  matInnerBar));
+
+  function cap(yPos, isTop){
+    const v=[],c=[],idx=[],nR=10; // nR reducido de 14
+    const yn   = isTop ? 1 : 0;
+    const phi_cap = twistAngle(yn);
+    for(let ir=0;ir<=nR;ir++){
+      const r = Ri + (Ro-Ri)*(ir/nR);
+      const rNorm = r / Ro;
+      for(let ia=0;ia<=ANG;ia++){
+        const th=(ia/ANG)*Math.PI*2;
+        v.push(r*Math.cos(th+phi_cap), yPos, r*Math.sin(th+phi_cap));
+        const col=colormap(stressFactor(yn, rNorm));
+        c.push(col.r,col.g,col.b);
+      }
+    }
+    for(let ir=0;ir<nR;ir++){
+      for(let ia=0;ia<ANG;ia++){
+        const a=ir*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
+        if(isTop){idx.push(a,b,cc,b,d,cc);}else{idx.push(a,cc,b,b,cc,d);}
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+    g.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    root.add(new THREE.Mesh(g, matCap));
+  }
+  cap(-L/2, false);
+  cap( L/2, true);
+}
+
+function buildGrid(){
+  const N=gridDensity;
+  const AXPTS=40; // reducido de 56
+
+  function coloredLine(pts, colorFn){
+    const pos=[], cols=[];
+    for(let i=0;i<pts.length;i++){
+      pos.push(pts[i].x, pts[i].y, pts[i].z);
+      const c=colorFn(i, pts.length);
+      cols.push(c.r, c.g, c.b);
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    geo.setAttribute('color',    new THREE.Float32BufferAttribute(cols,3));
+    return new THREE.Line(geo, matGrid);
+  }
+
+  const R_grid = Ro * 1.52;
+
+  for(let ia=0;ia<N;ia++){
+    const theta0=(ia/N)*Math.PI*2;
+    const defPts=[];
+    for(let iy=0;iy<=AXPTS;iy++){
+      const y=-L/2+(iy/AXPTS)*L;
+      defPts.push(deform(R_grid, theta0, y));
+    }
+    root.add(coloredLine(defPts, (i,n)=>{
+      const yNorm=i/(n-1);
+      return colormap(stressFactor(yNorm, 1.0));
+    }));
+  }
+
+  const NRINGS=Math.round(N*1.4);
+  for(let iy=0;iy<=NRINGS;iy++){
+    const y=-L/2+(iy/NRINGS)*L;
+    const yNorm=(y+L/2)/L;
+    const phi=twistAngle(yNorm);
+    const s=stressFactor(yNorm, 1.0);
+    const defPts=[];
+    for(let ia=0;ia<=ANG;ia++){
+      const theta=(ia/ANG)*Math.PI*2;
+      defPts.push(new THREE.Vector3(R_grid*Math.cos(theta+phi), y, R_grid*Math.sin(theta+phi)));
+    }
+    root.add(coloredLine(defPts, ()=>colormap(s)));
+  }
+}
+
+function buildSections(){
+  const nSec=8, nR=12; // nR reducido de 16
+  for(let s=0;s<=nSec;s++){
+    const y=-L/2+(s/nSec)*L;
+    const yn=s/nSec;
+    const phi=twistAngle(yn);
+
+    const v=[],c=[],idx=[];
+    for(let ir=0;ir<=nR;ir++){
+      const r=Ri+(Ro-Ri)*(ir/nR);
+      const rNorm=r/Ro;
+      for(let ia=0;ia<=ANG;ia++){
+        const th=(ia/ANG)*Math.PI*2;
+        v.push(r*Math.cos(th+phi), y, r*Math.sin(th+phi));
+        const col=colormap(stressFactor(yn, rNorm));
+        c.push(col.r,col.g,col.b);
+      }
+    }
+    for(let ir=0;ir<nR;ir++){
+      for(let ia=0;ia<ANG;ia++){
+        const a=ir*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
+        idx.push(a,b,cc, b,d,cc);
+      }
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+    geo.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
+    geo.setIndex(idx); geo.computeVertexNormals();
+    root.add(new THREE.Mesh(geo, matSection));
+
+    const outerPts=[], innerPts=[];
+    for(let ia=0;ia<=ANG;ia++){
+      const th=(ia/ANG)*Math.PI*2;
+      outerPts.push(new THREE.Vector3(Ro*Math.cos(th+phi), y, Ro*Math.sin(th+phi)));
+      innerPts.push(new THREE.Vector3(Ri*Math.cos(th+phi), y, Ri*Math.sin(th+phi)));
+    }
+    const outerCol=colormap(stressFactor(yn,1.0));
+    const innerCol=colormap(stressFactor(yn,Ri/Ro));
+    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(outerPts),
+      new THREE.LineBasicMaterial({color:outerCol,transparent:true,opacity:0.9})));
+    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(innerPts),
+      new THREE.LineBasicMaterial({color:innerCol,transparent:true,opacity:0.75})));
+  }
+}
+
+function buildFixedEnd(){
+  const geo=new THREE.BoxGeometry(1.3,0.1,1.3);
+  const solid=new THREE.Mesh(geo, matFixed);
+  solid.position.y=-L/2-0.05;
+  root.add(solid);
+  const plate=new THREE.Mesh(geo, matFixedWire);
+  plate.position.y=-L/2-0.05;
+  root.add(plate);
+  for(let i=-2;i<=2;i++){
+    const g2=new THREE.BoxGeometry(0.035,0.3,0.9);
+    const m2=new THREE.Mesh(g2, matFixedBar);
+    m2.position.set(i*0.22,-L/2-0.2,0);
+    root.add(m2);
+  }
+}
+
+function buildTorqueArrow(){
+  if(torque <= 0.001) return;
+  const phi = twistAngle(1);
+
+  // ── Solo arcAngle escala con el torque — el tamaño de la flecha es FIJO ──
+  const arcAngle = Math.PI * (0.55 + 1.30 * torque); // recorrido del arco (varía)
+  const tubeR    = 0.028;   // grosor fijo
+  const torusR   = 0.64;    // radio fijo
+  const coneBase = 0.075;   // base del cono fija
+  const coneH    = 0.150;   // altura del cono fija
+  const yOff     = L/2 + 0.10;
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Arco (segmentos de tubo reducidos: 6 y 44)
+  const tGeo = new THREE.TorusGeometry(torusR, tubeR, 6, 44, arcAngle);
+  const tor  = new THREE.Mesh(tGeo, matArrow);
+  tor.position.y  = yOff;
+  tor.rotation.x  = Math.PI/2;
+  tor.rotation.z  = phi - 0.22;
+  root.add(tor);
+
+  // Cabeza de flecha
+  const endAng = phi - 0.22 + arcAngle;
+  const cx = torusR * Math.cos(endAng);
+  const cz = torusR * Math.sin(endAng);
+  const cGeo = new THREE.ConeGeometry(coneBase, coneH, 10);
+  const cone = new THREE.Mesh(cGeo, matArrow);
+  cone.position.set(cx, yOff, cz);
+  const tangentAngle = endAng + Math.PI/2;
+  cone.rotation.set(0, 0, -(tangentAngle + Math.PI/2 + 0.3));
+  cone.rotateOnWorldAxis(new THREE.Vector3(0,1,0), endAng + Math.PI/2);
+  root.add(cone);
+
+  // Anillo guía (segmentos reducidos: 4 tubo, 32 anillo)
+  const refGeo = new THREE.TorusGeometry(torusR, 0.006, 4, 32, Math.PI*2);
+  const ref = new THREE.Mesh(refGeo, matArrowRef);
+  ref.position.y = yOff;
+  ref.rotation.x = Math.PI/2;
+  root.add(ref);
+}
+
+rebuild();
+
+let isDrag=false,prevM={x:0,y:0};
+canvas.addEventListener('mousedown',e=>{isDrag=true;prevM={x:e.clientX,y:e.clientY}});
+canvas.addEventListener('touchstart',e=>{isDrag=true;prevM={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});
+window.addEventListener('mouseup',()=>isDrag=false);
+window.addEventListener('touchend',()=>isDrag=false);
+
+canvas.addEventListener('mousemove',e=>{
+  if(!isDrag)return;
+  sph.theta-=(e.clientX-prevM.x)*0.006;
+  sph.phi=Math.max(0.12,Math.min(Math.PI-0.12,sph.phi+(e.clientY-prevM.y)*0.006));
+  prevM={x:e.clientX,y:e.clientY};
+  updateCam();
+});
+canvas.addEventListener('touchmove',e=>{
+  if(!isDrag)return;
+  sph.theta-=(e.touches[0].clientX-prevM.x)*0.006;
+  sph.phi=Math.max(0.12,Math.min(Math.PI-0.12,sph.phi+(e.touches[0].clientY-prevM.y)*0.006));
+  prevM={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  updateCam();
+},{passive:true});
+canvas.addEventListener('wheel',e=>{
+  sph.r=Math.max(3,Math.min(22,sph.r+e.deltaY*0.015));
+  updateCam();
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('dblclick',()=>{
+  sph.theta=0.65; sph.phi=1.08; sph.r=9.5; updateCam();
+});
+
+document.getElementById('sldT').addEventListener('input',function(){
+  torque=this.value/100;
+  document.getElementById('tLab').textContent=this.value+'%';
+  rebuild();
+});
+document.getElementById('sldW').addEventListener('input',function(){
+  const pct = parseInt(this.value);
+  Ri = Ro * (pct / 100);
+  const label = pct === 0 ? 'Maciza' : pct + '% hueco';
+  document.getElementById('wLab').textContent = label;
+  rebuild();
+});
+document.getElementById('sldD').addEventListener('input',function(){
+  defScale=parseInt(this.value);
+  document.getElementById('dLab').textContent=this.value+'×';
+  rebuild();
+});
+document.getElementById('sldG').addEventListener('input',function(){
+  gridDensity=parseInt(this.value);
+  document.getElementById('gLab').textContent=this.value;
+  rebuild();
+});
+
+document.getElementById('btnAnim').addEventListener('click',function(){
+  animOn=!animOn;
+  this.textContent=animOn?'⏸ Pausar':'▶ Animar';
+  this.classList.toggle('active',animOn);
+});
+document.getElementById('btnGrid').addEventListener('click',function(){
+  showGrid=!showGrid;
+  this.textContent=showGrid?'Ocultar rejilla':'Mostrar rejilla';
+  this.classList.toggle('active',showGrid);
+  rebuild();
+});
+document.getElementById('btnBar').addEventListener('click',function(){
+  showBar=!showBar;
+  this.textContent=showBar?'Ocultar barra':'Mostrar barra';
+  this.classList.toggle('active',showBar);
+  rebuild();
+});
+document.getElementById('btnSections').addEventListener('click',function(){
+  showSections=!showSections;
+  this.textContent=showSections?'Ocultar secciones':'Mostrar secciones';
+  this.classList.toggle('active',showSections);
+  rebuild();
+});
+
+function resize(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+resize();
+new ResizeObserver(resize).observe(canvas);
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(animOn){
+    animT+=0.005;
+    sph.theta+=0.0025;
+    updateCam();
+  }
+  renderer.render(scene,camera);
+}
+loop();
+</script>
+</body>
+</html>
