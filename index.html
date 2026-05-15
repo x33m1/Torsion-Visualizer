@@ -3,67 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Principio de Saint-Venant — Torsión en barra hueca</title>
+<title>Principio de Saint-Venant — Comparación maciza vs hueca</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#0f1117;color:#e0e0e0;font-family:system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
-  #header{padding:10px 18px;border-bottom:1px solid #2a2a3a;display:flex;align-items:center;gap:16px;flex-shrink:0;background:#13151f}
-  #header h1{font-size:14px;font-weight:500;color:#fff;letter-spacing:0.02em}
-  #header span{font-size:12px;color:#666;margin-left:4px}
-  #canvas-wrap{flex:1;position:relative;min-height:0}
-  canvas{width:100%;height:100%;display:block}
-  #controls{padding:10px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 20px}
+  #header{padding:8px 18px;border-bottom:1px solid #2a2a3a;display:flex;align-items:center;gap:16px;flex-shrink:0;background:#13151f}
+  #header h1{font-size:13px;font-weight:500;color:#fff;letter-spacing:0.02em}
+  #header span{font-size:11px;color:#666;margin-left:4px}
+  #views{flex:1;display:flex;min-height:0;gap:1px;background:#1a1a2a}
+  .view{flex:1;position:relative;overflow:hidden}
+  .view canvas{width:100%;height:100%;display:block}
+  .view-label{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(15,17,23,0.85);border:1px solid #2a2a3a;border-radius:6px;padding:4px 12px;font-size:11px;color:#aaa;pointer-events:none;white-space:nowrap;text-align:center}
+  .view-label strong{color:#fff;display:block;font-size:12px}
+  .stress-badge{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(15,17,23,0.85);border:1px solid #2a2a3a;border-radius:6px;padding:4px 12px;font-size:11px;pointer-events:none;white-space:nowrap;text-align:center}
+  #legend{position:absolute;top:10px;right:10px;background:rgba(15,17,23,0.88);border:1px solid #2a2a3a;border-radius:8px;padding:9px 12px;font-size:11px;color:#999;pointer-events:none;z-index:10}
+  #legend strong{display:block;color:#ddd;margin-bottom:5px;font-size:11px}
+  #legend .bar{width:110px;height:7px;border-radius:2px;background:linear-gradient(to right,#1a4a8c,#2a7abf,#3db89a,#e8a020,#c0392b,#111);margin:3px 0}
+  #legend .barlab{display:flex;justify-content:space-between;font-size:9px;color:#666}
+  #legend .items{margin-top:6px;border-top:1px solid #2a2a3a;padding-top:5px;display:flex;flex-direction:column;gap:3px}
+  #legend .item{display:flex;align-items:center;gap:5px;font-size:10px}
+  #legend .dot{width:14px;height:2px;border-radius:1px;flex-shrink:0}
+  #divider{width:1px;background:#2a2a3a;flex-shrink:0}
+  #btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0}
+  button{font-size:11px;padding:4px 12px;background:transparent;border:1px solid #3a3a4a;color:#ccc;border-radius:5px;cursor:pointer;transition:background 0.15s}
+  button:hover{background:#2a2a3a}
+  button.active{border-color:#e05030;color:#e05030}
+  #controls{padding:8px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px 20px}
   .ctrl{display:flex;flex-direction:column;gap:3px}
   .ctrl label{font-size:11px;color:#888;display:flex;justify-content:space-between}
   .ctrl label span{color:#ccc;font-weight:500}
   input[type=range]{width:100%;accent-color:#e05030;height:3px;cursor:pointer}
-  #btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 18px;border-top:1px solid #2a2a3a;background:#13151f;flex-shrink:0}
-  button{font-size:11px;padding:4px 12px;background:transparent;border:1px solid #3a3a4a;color:#ccc;border-radius:5px;cursor:pointer;transition:background 0.15s}
-  button:hover{background:#2a2a3a}
-  button.active{border-color:#e05030;color:#e05030}
-  #legend{position:absolute;top:12px;right:14px;background:rgba(15,17,23,0.88);border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;font-size:11px;color:#999;pointer-events:none}
-  #legend strong{display:block;color:#ddd;margin-bottom:6px;font-size:12px}
-  #legend .bar{width:120px;height:7px;border-radius:2px;background:linear-gradient(to right,#1a4a8c,#2a7abf,#3db89a,#e8a020,#c0392b);margin:3px 0}
-  #legend .barlab{display:flex;justify-content:space-between;font-size:10px;color:#666}
-  #legend .items{margin-top:8px;border-top:1px solid #2a2a3a;padding-top:6px;display:flex;flex-direction:column;gap:3px}
-  #legend .item{display:flex;align-items:center;gap:6px;font-size:11px}
-  #legend .dot{width:18px;height:2px;border-radius:1px}
-  #info{position:absolute;bottom:12px;left:14px;font-size:11px;color:#555;pointer-events:none}
-  #phi-info{position:absolute;top:12px;left:14px;background:rgba(15,17,23,0.88);border:1px solid #2a2a3a;border-radius:8px;padding:8px 12px;font-size:11px;color:#aaa;pointer-events:none;min-width:160px}
-  #phi-info span{display:block;margin-top:2px;font-size:13px;color:#e8a020;font-weight:500}
+  #info{position:absolute;bottom:10px;right:10px;font-size:10px;color:#444;pointer-events:none;z-index:10}
 </style>
 </head>
 <body>
 
 <div id="header">
-  <h1>Principio de Saint-Venant <span>— Torsión en barra circular hueca</span></h1>
+  <h1>Saint-Venant — Torsión <span>| Comparación: Barra maciza vs hueca</span></h1>
 </div>
 
-<div id="canvas-wrap">
-  <canvas id="c"></canvas>
-  <div id="legend">
+<div id="views">
+  <div class="view" id="viewL">
+    <canvas id="cL"></canvas>
+    <div class="view-label"><strong>MACIZA</strong>Ri = 0  (referencia)</div>
+    <div class="stress-badge" id="badgeL" style="color:#aaa">τ<sub>max</sub>: —</div>
+  </div>
+  <div id="divider"></div>
+  <div class="view" id="viewR">
+    <canvas id="cR"></canvas>
+    <div class="view-label" id="labelR"><strong>HUECA</strong>Ri = 40%</div>
+    <div class="stress-badge" id="badgeR" style="color:#aaa">τ<sub>max</sub>: —</div>
+  </div>
+
+  <!-- leyenda global sobre la vista derecha -->
+  <div id="legend" style="right:10px;top:10px;position:absolute">
     <strong>Esfuerzo cortante τ</strong>
     <div class="bar"></div>
-    <div class="barlab"><span>Bajo</span><span>Alto</span></div>
+    <div class="barlab"><span>Bajo</span><span>Alto</span><span style="color:#e05030">⚠ Falla</span></div>
     <div class="items">
-      <div class="item"><div class="dot" style="background:#ffffff;opacity:0.2;width:18px;height:1px;border:1px dashed #555"></div> Rejilla sin deformar</div>
       <div class="item"><div class="dot" style="background:#e8a020"></div> Rejilla deformada</div>
-      <div class="item"><div class="dot" style="background:#e05030"></div> Torque T aplicado</div>
-      <div class="item"><div class="dot" style="background:#555;border:1px solid #888"></div> Empotrado</div>
+      <div class="item"><div class="dot" style="background:#e05030"></div> Torque T</div>
+      <div class="item"><div class="dot" style="background:#111;border:1px solid #555"></div> Sobrecarga (falla)</div>
     </div>
   </div>
-  <div id="phi-info">
-    Giro máximo φ<sub>max</sub> (extremo libre)
-    <span id="phi-val">0.0° / 0.0000 rad</span>
-    <div style="font-size:10px;color:#555;margin-top:3px">Máx permitido: 15° / 0.2618 rad</div>
-  </div>
-  <div id="info">Clic + arrastrar: rotar &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Doble clic: reset cámara</div>
+  <div id="info">Arrastrar: rotar · Scroll: zoom · Doble clic: reset</div>
 </div>
 
 <div id="btns">
   <button id="btnAnim" class="active">⏸ Pausar</button>
   <button id="btnGrid" class="active">Ocultar rejilla</button>
-  <button id="btnBar" class="active">Ocultar barra</button>
+  <button id="btnBar"  class="active">Ocultar barra</button>
   <button id="btnSections">Mostrar secciones</button>
 </div>
 
@@ -73,7 +82,7 @@
     <input type="range" id="sldT" min="0" max="100" value="10" step="1">
   </div>
   <div class="ctrl">
-    <label>Hueco interior <span id="wLab">40%</span></label>
+    <label>Hueco interior (derecha) <span id="wLab">40%</span></label>
     <input type="range" id="sldW" min="0" max="95" value="40" step="1">
   </div>
   <div class="ctrl">
@@ -88,52 +97,63 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // tope DPR=2 para perf
-renderer.setClearColor(0x0f1117,1);
+// ─── Dos renderers, una cámara compartida ────────────────────────────────────
+const canvL = document.getElementById('cL');
+const canvR = document.getElementById('cR');
 
-const scene = new THREE.Scene();
+const rendL = new THREE.WebGLRenderer({canvas:canvL, antialias:true, powerPreference:'high-performance'});
+const rendR = new THREE.WebGLRenderer({canvas:canvR, antialias:true, powerPreference:'high-performance'});
+rendL.setPixelRatio(Math.min(devicePixelRatio,2));
+rendR.setPixelRatio(Math.min(devicePixelRatio,2));
+rendL.setClearColor(0x0f1117,1);
+rendR.setClearColor(0x0f1117,1);
+
+const sceneL = new THREE.Scene();
+const sceneR = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38,1,0.01,200);
 
-const ambient = new THREE.AmbientLight(0xffffff,0.5);
-scene.add(ambient);
-const d1=new THREE.DirectionalLight(0xffffff,0.7); d1.position.set(5,8,5); scene.add(d1);
-const d2=new THREE.DirectionalLight(0xffffff,0.2); d2.position.set(-5,-4,-4); scene.add(d2);
+function addLights(sc){
+  sc.add(new THREE.AmbientLight(0xffffff,0.5));
+  const d1=new THREE.DirectionalLight(0xffffff,0.7); d1.position.set(5,8,5); sc.add(d1);
+  const d2=new THREE.DirectionalLight(0xffffff,0.2); d2.position.set(-5,-4,-4); sc.add(d2);
+}
+addLights(sceneL);
+addLights(sceneR);
 
+// ─── Estado global ────────────────────────────────────────────────────────────
 const L=3.4, Ro=0.38;
-let Ri=Ro*0.40, torque=0.1, defScale=6;
-let gridDensity=12;
+let RiR=Ro*0.40;          // hueco de la barra DERECHA
+const RiL=0;              // barra izquierda siempre maciza
+let torque=0.1, defScale=6, gridDensity=12;
 let animOn=true, showGrid=true, showBar=true, showSections=false;
-let animT=0;
 
-// ── Materiales cacheados — se reusan entre rebuilds, evitando asignaciones ──
-const matOuterBar  = new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.82,side:THREE.FrontSide});
-const matInnerBar  = new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.65,side:THREE.BackSide});
-const matCap       = new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
-const matSection   = new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.80});
-const matGrid      = new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.88});
-const matFixed     = new THREE.MeshLambertMaterial({color:0x445566,transparent:true,opacity:0.88});
-const matFixedWire = new THREE.MeshBasicMaterial({color:0x334455,wireframe:true,transparent:true,opacity:0.3});
-const matFixedBar  = new THREE.MeshBasicMaterial({color:0x334455,transparent:true,opacity:0.5});
-const matArrow     = new THREE.MeshBasicMaterial({color:0xe05030});
-const matArrowRef  = new THREE.MeshBasicMaterial({color:0xe05030,transparent:true,opacity:0.18});
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Materiales cacheados ─────────────────────────────────────────────────────
+const matGrid     = new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.88});
+const matFixed    = new THREE.MeshLambertMaterial({color:0x445566,transparent:true,opacity:0.88});
+const matFixedW   = new THREE.MeshBasicMaterial({color:0x334455,wireframe:true,transparent:true,opacity:0.3});
+const matFixedB   = new THREE.MeshBasicMaterial({color:0x334455,transparent:true,opacity:0.5});
+const matArrow    = new THREE.MeshBasicMaterial({color:0xe05030});
+const matArrowRef = new THREE.MeshBasicMaterial({color:0xe05030,transparent:true,opacity:0.18});
 
-const sph={theta:0.65, phi:1.08, r:9.5};
-const TARGET=new THREE.Vector3(0,0,0);
-
+// ─── Cámara órbita ────────────────────────────────────────────────────────────
+const sph={theta:0.65,phi:1.08,r:9.5};
 function updateCam(){
   camera.position.set(
     sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),
     sph.r*Math.cos(sph.phi),
     sph.r*Math.sin(sph.phi)*Math.cos(sph.theta)
   );
-  camera.lookAt(TARGET);
+  camera.lookAt(0,0,0);
 }
 updateCam();
 
+// ─── Colormap extendido: > 1 → negro (falla) ─────────────────────────────────
 function colormap(t){
+  if(t > 1.0){
+    // interpolar de rojo a negro según cuánto se pasa
+    const over = Math.min((t-1.0)/0.5, 1.0); // 0→rojo, 1→negro
+    return new THREE.Color((1-over)*0.75, 0, 0);
+  }
   t=Math.max(0,Math.min(1,t));
   const stops=[[0,[0.10,0.29,0.55]],[0.25,[0.17,0.48,0.75]],[0.5,[0.24,0.72,0.60]],[0.75,[0.91,0.63,0.13]],[1.0,[0.75,0.22,0.17]]];
   for(let i=0;i<stops.length-1;i++){
@@ -146,73 +166,66 @@ function colormap(t){
   return new THREE.Color(0.75,0.22,0.17);
 }
 
-const MAX_ANGLE_RAD = 15 * Math.PI / 180;
+const MAX_ANGLE_RAD = 15*Math.PI/180;
 
-function twistAngle(yNorm){
-  const physicalAngle = torque * yNorm * MAX_ANGLE_RAD;
-  return physicalAngle * (defScale / 4);
+function twistAngle(yNorm, Ri){
+  // la barra hueca es menos rígida → gira un poco más (J más pequeño)
+  const J_solid  = Math.pow(Ro,4);
+  const J_hollow = Math.pow(Ro,4)-Math.pow(Ri,4);
+  const stiffFactor = J_solid / Math.max(J_hollow,1e-9);
+  const phys = torque * yNorm * MAX_ANGLE_RAD * Math.min(stiffFactor, 3.0);
+  return phys * (defScale/4);
 }
 
-function stressFactor(yNorm, rNorm){
-  if(torque <= 0.001) return 0;
+// stressFactor sin clamp superior (para detectar falla)
+function stressFactor(yNorm, rNorm, Ri){
+  if(torque<=0.001) return 0;
+  const J_solid  = Math.pow(Ro,4);
+  const J_hollow = Math.pow(Ro,4)-Math.pow(Ri,4);
+  const amp = J_solid / Math.max(J_hollow,1e-9);
   const radial = rNorm;
-  const axial  = 0.50 + 0.50 * yNorm;
-  return Math.min(1, torque * radial * axial);
+  const axial  = 0.50+0.50*yNorm;
+  return torque * radial * axial * amp; // SIN Math.min(1,…) → puede superar 1
 }
 
-function deform(r, theta, y){
+function deform(r, theta, y, Ri){
   const yNorm=(y+L/2)/L;
-  const phi=twistAngle(yNorm);
+  const phi=twistAngle(yNorm, Ri);
   return new THREE.Vector3(r*Math.cos(theta+phi), y, r*Math.sin(theta+phi));
 }
 
-let root=null;
-
-function rebuild(){
-  if(root){
-    scene.remove(root);
-    root.traverse(o=>{
-      if(o.geometry) o.geometry.dispose();
-      // materiales NO se disponen — están cacheados globalmente
-    });
-  }
-  root=new THREE.Group();
-
-  const phi_phys = torque * MAX_ANGLE_RAD;
-  const phi_deg  = (phi_phys * 180 / Math.PI).toFixed(1);
-  const phi_rad  = phi_phys.toFixed(4);
-  document.getElementById('phi-val').textContent = phi_deg + '° / ' + phi_rad + ' rad';
-
-  if(showBar)      buildBar();
-  if(showGrid)     buildGrid();
-  if(showSections) buildSections();
-  buildFixedEnd();
-  buildTorqueArrow();
-
-  scene.add(root);
-}
-
-// Resoluciones reducidas respecto al original (48→36, 72→50) para mejor fluidez
+// ─── Builders genéricos (Ri como parámetro) ───────────────────────────────────
 const ANG=36, AX=50;
 
-function buildBar(){
+function makeBarMats(){
+  return {
+    outer: new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.82,side:THREE.FrontSide}),
+    inner: new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.65,side:THREE.BackSide}),
+    cap:   new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}),
+    sec:   new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.80}),
+  };
+}
+const matsL = makeBarMats();
+const matsR = makeBarMats();
+
+function buildBar(root, Ri, mats){
   function tube(radius, isInner){
-    const rNorm = radius / Ro;
+    const rNorm=radius/Ro;
     const v=[],c=[],idx=[];
     for(let iy=0;iy<=AX;iy++){
       const y=-L/2+(iy/AX)*L, yn=iy/AX;
       for(let ia=0;ia<=ANG;ia++){
         const th=(ia/ANG)*Math.PI*2;
-        const p=deform(radius,th,y);
+        const p=deform(radius,th,y,Ri);
         v.push(p.x,p.y,p.z);
-        const col=colormap(stressFactor(yn, rNorm));
+        const col=colormap(stressFactor(yn,rNorm,Ri));
         c.push(col.r,col.g,col.b);
       }
     }
     for(let iy=0;iy<AX;iy++){
       for(let ia=0;ia<ANG;ia++){
         const a=iy*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
-        if(isInner){idx.push(a,cc,b,b,cc,d);}else{idx.push(a,b,cc,b,d,cc);}
+        isInner?idx.push(a,cc,b,b,cc,d):idx.push(a,b,cc,b,d,cc);
       }
     }
     const g=new THREE.BufferGeometry();
@@ -221,232 +234,261 @@ function buildBar(){
     g.setIndex(idx); g.computeVertexNormals();
     return g;
   }
-  root.add(new THREE.Mesh(tube(Ro,false), matOuterBar));
-  root.add(new THREE.Mesh(tube(Ri,true),  matInnerBar));
+  root.add(new THREE.Mesh(tube(Ro,false),mats.outer));
+  if(Ri>0.005) root.add(new THREE.Mesh(tube(Ri,true),mats.inner));
 
-  function cap(yPos, isTop){
-    const v=[],c=[],idx=[],nR=10; // nR reducido de 14
-    const yn   = isTop ? 1 : 0;
-    const phi_cap = twistAngle(yn);
+  function cap(yPos,isTop){
+    const v=[],c=[],idx=[],nR=10;
+    const yn=isTop?1:0;
+    const phi=twistAngle(yn,Ri);
     for(let ir=0;ir<=nR;ir++){
-      const r = Ri + (Ro-Ri)*(ir/nR);
-      const rNorm = r / Ro;
+      const r=Ri+(Ro-Ri)*(ir/nR);
+      const rNorm=r/Ro;
       for(let ia=0;ia<=ANG;ia++){
         const th=(ia/ANG)*Math.PI*2;
-        v.push(r*Math.cos(th+phi_cap), yPos, r*Math.sin(th+phi_cap));
-        const col=colormap(stressFactor(yn, rNorm));
+        v.push(r*Math.cos(th+phi),yPos,r*Math.sin(th+phi));
+        const col=colormap(stressFactor(yn,rNorm,Ri));
         c.push(col.r,col.g,col.b);
       }
     }
     for(let ir=0;ir<nR;ir++){
       for(let ia=0;ia<ANG;ia++){
         const a=ir*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
-        if(isTop){idx.push(a,b,cc,b,d,cc);}else{idx.push(a,cc,b,b,cc,d);}
+        isTop?idx.push(a,b,cc,b,d,cc):idx.push(a,cc,b,b,cc,d);
       }
     }
     const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
     g.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
     g.setIndex(idx); g.computeVertexNormals();
-    root.add(new THREE.Mesh(g, matCap));
+    root.add(new THREE.Mesh(g,mats.cap));
   }
-  cap(-L/2, false);
-  cap( L/2, true);
+  cap(-L/2,false); cap(L/2,true);
 }
 
-function buildGrid(){
-  const N=gridDensity;
-  const AXPTS=40; // reducido de 56
-
-  function coloredLine(pts, colorFn){
-    const pos=[], cols=[];
+function buildGrid(root, Ri){
+  const N=gridDensity, AXPTS=40;
+  function coloredLine(pts,colorFn){
+    const pos=[],cols=[];
     for(let i=0;i<pts.length;i++){
-      pos.push(pts[i].x, pts[i].y, pts[i].z);
-      const c=colorFn(i, pts.length);
-      cols.push(c.r, c.g, c.b);
+      pos.push(pts[i].x,pts[i].y,pts[i].z);
+      const c=colorFn(i,pts.length);
+      cols.push(c.r,c.g,c.b);
     }
     const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
-    geo.setAttribute('color',    new THREE.Float32BufferAttribute(cols,3));
-    return new THREE.Line(geo, matGrid);
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+    return new THREE.Line(geo,matGrid);
   }
-
-  const R_grid = Ro * 1.52;
-
+  const R_grid=Ro*1.52;
   for(let ia=0;ia<N;ia++){
     const theta0=(ia/N)*Math.PI*2;
-    const defPts=[];
+    const pts=[];
     for(let iy=0;iy<=AXPTS;iy++){
       const y=-L/2+(iy/AXPTS)*L;
-      defPts.push(deform(R_grid, theta0, y));
+      pts.push(deform(R_grid,theta0,y,Ri));
     }
-    root.add(coloredLine(defPts, (i,n)=>{
-      const yNorm=i/(n-1);
-      return colormap(stressFactor(yNorm, 1.0));
-    }));
+    root.add(coloredLine(pts,(i,n)=>colormap(stressFactor(i/(n-1),1.0,Ri))));
   }
-
-  const NRINGS=Math.round(N*1.4);
-  for(let iy=0;iy<=NRINGS;iy++){
-    const y=-L/2+(iy/NRINGS)*L;
-    const yNorm=(y+L/2)/L;
-    const phi=twistAngle(yNorm);
-    const s=stressFactor(yNorm, 1.0);
-    const defPts=[];
+  const NR=Math.round(N*1.4);
+  for(let iy=0;iy<=NR;iy++){
+    const y=-L/2+(iy/NR)*L, yn=(y+L/2)/L;
+    const phi=twistAngle(yn,Ri);
+    const s=stressFactor(yn,1.0,Ri);
+    const pts=[];
     for(let ia=0;ia<=ANG;ia++){
-      const theta=(ia/ANG)*Math.PI*2;
-      defPts.push(new THREE.Vector3(R_grid*Math.cos(theta+phi), y, R_grid*Math.sin(theta+phi)));
+      const th=(ia/ANG)*Math.PI*2;
+      pts.push(new THREE.Vector3(R_grid*Math.cos(th+phi),y,R_grid*Math.sin(th+phi)));
     }
-    root.add(coloredLine(defPts, ()=>colormap(s)));
+    root.add(coloredLine(pts,()=>colormap(s)));
   }
 }
 
-function buildSections(){
-  const nSec=8, nR=12; // nR reducido de 16
+function buildSections(root, Ri){
+  const nSec=8,nR=12;
   for(let s=0;s<=nSec;s++){
-    const y=-L/2+(s/nSec)*L;
-    const yn=s/nSec;
-    const phi=twistAngle(yn);
-
+    const y=-L/2+(s/nSec)*L, yn=s/nSec;
+    const phi=twistAngle(yn,Ri);
     const v=[],c=[],idx=[];
     for(let ir=0;ir<=nR;ir++){
-      const r=Ri+(Ro-Ri)*(ir/nR);
-      const rNorm=r/Ro;
+      const r=Ri+(Ro-Ri)*(ir/nR), rNorm=r/Ro;
       for(let ia=0;ia<=ANG;ia++){
         const th=(ia/ANG)*Math.PI*2;
-        v.push(r*Math.cos(th+phi), y, r*Math.sin(th+phi));
-        const col=colormap(stressFactor(yn, rNorm));
+        v.push(r*Math.cos(th+phi),y,r*Math.sin(th+phi));
+        const col=colormap(stressFactor(yn,rNorm,Ri));
         c.push(col.r,col.g,col.b);
       }
     }
     for(let ir=0;ir<nR;ir++){
       for(let ia=0;ia<ANG;ia++){
         const a=ir*(ANG+1)+ia,b=a+1,cc=a+ANG+1,d=cc+1;
-        idx.push(a,b,cc, b,d,cc);
+        idx.push(a,b,cc,b,d,cc);
       }
     }
     const geo=new THREE.BufferGeometry();
     geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
     geo.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
     geo.setIndex(idx); geo.computeVertexNormals();
-    root.add(new THREE.Mesh(geo, matSection));
-
-    const outerPts=[], innerPts=[];
+    // usar matsR.sec para ambas (solo visual)
+    root.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.80})));
+    const op=[],ip=[];
     for(let ia=0;ia<=ANG;ia++){
       const th=(ia/ANG)*Math.PI*2;
-      outerPts.push(new THREE.Vector3(Ro*Math.cos(th+phi), y, Ro*Math.sin(th+phi)));
-      innerPts.push(new THREE.Vector3(Ri*Math.cos(th+phi), y, Ri*Math.sin(th+phi)));
+      op.push(new THREE.Vector3(Ro*Math.cos(th+phi),y,Ro*Math.sin(th+phi)));
+      ip.push(new THREE.Vector3(Ri*Math.cos(th+phi),y,Ri*Math.sin(th+phi)));
     }
-    const outerCol=colormap(stressFactor(yn,1.0));
-    const innerCol=colormap(stressFactor(yn,Ri/Ro));
-    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(outerPts),
-      new THREE.LineBasicMaterial({color:outerCol,transparent:true,opacity:0.9})));
-    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(innerPts),
-      new THREE.LineBasicMaterial({color:innerCol,transparent:true,opacity:0.75})));
+    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(op),new THREE.LineBasicMaterial({color:colormap(stressFactor(yn,1.0,Ri)),transparent:true,opacity:0.9})));
+    if(Ri>0.005) root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ip),new THREE.LineBasicMaterial({color:colormap(stressFactor(yn,Ri/Ro,Ri)),transparent:true,opacity:0.75})));
   }
 }
 
-function buildFixedEnd(){
+function buildFixedEnd(root){
   const geo=new THREE.BoxGeometry(1.3,0.1,1.3);
-  const solid=new THREE.Mesh(geo, matFixed);
-  solid.position.y=-L/2-0.05;
-  root.add(solid);
-  const plate=new THREE.Mesh(geo, matFixedWire);
-  plate.position.y=-L/2-0.05;
-  root.add(plate);
+  const s=new THREE.Mesh(geo,matFixed); s.position.y=-L/2-0.05; root.add(s);
+  const p=new THREE.Mesh(geo,matFixedW); p.position.y=-L/2-0.05; root.add(p);
   for(let i=-2;i<=2;i++){
     const g2=new THREE.BoxGeometry(0.035,0.3,0.9);
-    const m2=new THREE.Mesh(g2, matFixedBar);
-    m2.position.set(i*0.22,-L/2-0.2,0);
-    root.add(m2);
+    const m=new THREE.Mesh(g2,matFixedB); m.position.set(i*0.22,-L/2-0.2,0); root.add(m);
   }
 }
 
-function buildTorqueArrow(){
-  if(torque <= 0.001) return;
-
-  const arcAngle = Math.PI * (0.55 + 1.30 * torque); // solo el recorrido varía
-  const tubeR    = 0.028;
-  const torusR   = 0.64;
-  const coneBase = 0.075;
-  const coneH    = 0.150;
-  const yOff     = L/2 + 0.10;
-
-  // Toro plano en XZ: rotation.x = PI/2 lleva XY → XZ; el arco arranca en +X
-  const tGeo = new THREE.TorusGeometry(torusR, tubeR, 6, 44, arcAngle);
-  const tor  = new THREE.Mesh(tGeo, matArrow);
-  tor.position.y = yOff;
-  tor.rotation.x = Math.PI/2;
-  root.add(tor);
-
-  // Extremo del arco en el plano XZ
-  // El toro en XZ va: θ=0 → +X, θ=π/2 → +Z, θ=π → -X ...
-  const cx = torusR * Math.cos(arcAngle);
-  const cz = torusR * Math.sin(arcAngle);
-
-  // Tangente en ese punto (dirección de avance del arco, antihorario en XZ)
-  const tangent = new THREE.Vector3(-Math.sin(arcAngle), 0, Math.cos(arcAngle));
-
-  const cGeo = new THREE.ConeGeometry(coneBase, coneH, 10);
-  const cone = new THREE.Mesh(cGeo, matArrow);
-  cone.position.set(cx, yOff, cz);
-  // setFromUnitVectors rota el eje del cono (+Y) hasta apuntar a 'tangent'
-  // sin pasar por Euler — evita gimbal lock y es inequívoco
-  cone.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    tangent
-  );
+function buildTorqueArrow(root){
+  if(torque<=0.001) return;
+  const arcAngle=Math.PI*(0.55+1.30*torque);
+  const tubeR=0.028, torusR=0.64, coneBase=0.075, coneH=0.150, yOff=L/2+0.10;
+  const tGeo=new THREE.TorusGeometry(torusR,tubeR,6,44,arcAngle);
+  const tor=new THREE.Mesh(tGeo,matArrow);
+  tor.position.y=yOff; tor.rotation.x=Math.PI/2; root.add(tor);
+  const cx=torusR*Math.cos(arcAngle), cz=torusR*Math.sin(arcAngle);
+  const tangent=new THREE.Vector3(-Math.sin(arcAngle),0,Math.cos(arcAngle));
+  const cGeo=new THREE.ConeGeometry(coneBase,coneH,10);
+  const cone=new THREE.Mesh(cGeo,matArrow);
+  cone.position.set(cx,yOff,cz);
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tangent);
   root.add(cone);
+  const refGeo=new THREE.TorusGeometry(torusR,0.006,4,32,Math.PI*2);
+  const ref=new THREE.Mesh(refGeo,matArrowRef);
+  ref.position.y=yOff; ref.rotation.x=Math.PI/2; root.add(ref);
+}
 
-  // Anillo guía completo (referencia visual, siempre plano)
-  const refGeo = new THREE.TorusGeometry(torusR, 0.006, 4, 32, Math.PI*2);
-  const ref = new THREE.Mesh(refGeo, matArrowRef);
-  ref.position.y = yOff;
-  ref.rotation.x = Math.PI/2;
-  root.add(ref);
+// ─── Raíces de escena ─────────────────────────────────────────────────────────
+let rootL=null, rootR=null;
+
+function disposeRoot(root, scene){
+  if(!root) return;
+  scene.remove(root);
+  root.traverse(o=>{if(o.geometry) o.geometry.dispose();});
+}
+
+function rebuildStress(Ri){
+  // Calcula τ máximo normalizado para el badge
+  return stressFactor(1.0, 1.0, Ri);
+}
+
+function updateBadge(el, sf){
+  const pct = Math.round(sf*100);
+  if(sf > 1.0){
+    el.style.color='#ff3333';
+    el.style.borderColor='#ff3333';
+    el.innerHTML = `τ<sub>max</sub>: <strong style="color:#ff3333">${pct}% ⚠ FALLA</strong>`;
+  } else {
+    el.style.color='#aaa';
+    el.style.borderColor='#2a2a3a';
+    el.innerHTML = `τ<sub>max</sub>: <strong style="color:#e8a020">${pct}%</strong>`;
+  }
+}
+
+function rebuild(){
+  disposeRoot(rootL,sceneL);
+  disposeRoot(rootR,sceneR);
+  rootL=new THREE.Group();
+  rootR=new THREE.Group();
+
+  if(showBar){
+    buildBar(rootL, RiL, matsL);
+    buildBar(rootR, RiR, matsR);
+  }
+  if(showGrid){
+    buildGrid(rootL, RiL);
+    buildGrid(rootR, RiR);
+  }
+  if(showSections){
+    buildSections(rootL, RiL);
+    buildSections(rootR, RiR);
+  }
+  buildFixedEnd(rootL);
+  buildFixedEnd(rootR);
+  buildTorqueArrow(rootL);
+  buildTorqueArrow(rootR);
+
+  sceneL.add(rootL);
+  sceneR.add(rootR);
+
+  // badges
+  updateBadge(document.getElementById('badgeL'), rebuildStress(RiL));
+  updateBadge(document.getElementById('badgeR'), rebuildStress(RiR));
+
+  // etiqueta dinámica barra derecha
+  const pct = Math.round(RiR/Ro*100);
+  document.getElementById('labelR').innerHTML =
+    `<strong>HUECA</strong>Ri = ${pct>0?pct+'%':'0 (maciza)'}`;
 }
 
 rebuild();
 
-let isDrag=false,prevM={x:0,y:0};
-canvas.addEventListener('mousedown',e=>{isDrag=true;prevM={x:e.clientX,y:e.clientY}});
-canvas.addEventListener('touchstart',e=>{isDrag=true;prevM={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});
-window.addEventListener('mouseup',()=>isDrag=false);
-window.addEventListener('touchend',()=>isDrag=false);
+// ─── Resize ───────────────────────────────────────────────────────────────────
+function resize(){
+  [canvL, canvR].forEach(cv=>{
+    const w=cv.clientWidth, h=cv.clientHeight;
+    const renderer = cv===canvL?rendL:rendR;
+    renderer.setSize(w,h,false);
+  });
+  // aspect basado en una vista (ambas iguales)
+  camera.aspect = canvL.clientWidth / Math.max(canvL.clientHeight,1);
+  camera.updateProjectionMatrix();
+}
+resize();
+new ResizeObserver(resize).observe(document.getElementById('views'));
 
-canvas.addEventListener('mousemove',e=>{
-  if(!isDrag)return;
-  sph.theta-=(e.clientX-prevM.x)*0.006;
-  sph.phi=Math.max(0.12,Math.min(Math.PI-0.12,sph.phi+(e.clientY-prevM.y)*0.006));
+// ─── Interacción (compartida entre ambas vistas) ──────────────────────────────
+let isDrag=false, prevM={x:0,y:0};
+const views = document.getElementById('views');
+views.addEventListener('mousedown', e=>{isDrag=true; prevM={x:e.clientX,y:e.clientY};});
+views.addEventListener('touchstart',e=>{isDrag=true; prevM={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+window.addEventListener('mouseup', ()=>isDrag=false);
+window.addEventListener('touchend',()=>isDrag=false);
+views.addEventListener('mousemove',e=>{
+  if(!isDrag) return;
+  sph.theta -= (e.clientX-prevM.x)*0.006;
+  sph.phi = Math.max(0.12,Math.min(Math.PI-0.12, sph.phi+(e.clientY-prevM.y)*0.006));
   prevM={x:e.clientX,y:e.clientY};
   updateCam();
 });
-canvas.addEventListener('touchmove',e=>{
-  if(!isDrag)return;
-  sph.theta-=(e.touches[0].clientX-prevM.x)*0.006;
-  sph.phi=Math.max(0.12,Math.min(Math.PI-0.12,sph.phi+(e.touches[0].clientY-prevM.y)*0.006));
+views.addEventListener('touchmove',e=>{
+  if(!isDrag) return;
+  sph.theta -= (e.touches[0].clientX-prevM.x)*0.006;
+  sph.phi = Math.max(0.12,Math.min(Math.PI-0.12, sph.phi+(e.touches[0].clientY-prevM.y)*0.006));
   prevM={x:e.touches[0].clientX,y:e.touches[0].clientY};
   updateCam();
 },{passive:true});
-canvas.addEventListener('wheel',e=>{
+views.addEventListener('wheel',e=>{
   sph.r=Math.max(3,Math.min(22,sph.r+e.deltaY*0.015));
-  updateCam();
-  e.preventDefault();
+  updateCam(); e.preventDefault();
 },{passive:false});
-canvas.addEventListener('dblclick',()=>{
+views.addEventListener('dblclick',()=>{
   sph.theta=0.65; sph.phi=1.08; sph.r=9.5; updateCam();
 });
 
+// ─── Controles ────────────────────────────────────────────────────────────────
 document.getElementById('sldT').addEventListener('input',function(){
   torque=this.value/100;
   document.getElementById('tLab').textContent=this.value+'%';
   rebuild();
 });
 document.getElementById('sldW').addEventListener('input',function(){
-  const pct = parseInt(this.value);
-  Ri = Ro * (pct / 100);
-  const label = pct === 0 ? 'Maciza' : pct + '% hueco';
-  document.getElementById('wLab').textContent = label;
+  const pct=parseInt(this.value);
+  RiR=Ro*(pct/100);
+  document.getElementById('wLab').textContent=pct===0?'Maciza':pct+'%';
   rebuild();
 });
 document.getElementById('sldD').addEventListener('input',function(){
@@ -459,7 +501,6 @@ document.getElementById('sldG').addEventListener('input',function(){
   document.getElementById('gLab').textContent=this.value;
   rebuild();
 });
-
 document.getElementById('btnAnim').addEventListener('click',function(){
   animOn=!animOn;
   this.textContent=animOn?'⏸ Pausar':'▶ Animar';
@@ -484,23 +525,12 @@ document.getElementById('btnSections').addEventListener('click',function(){
   rebuild();
 });
 
-function resize(){
-  const w=canvas.clientWidth,h=canvas.clientHeight;
-  renderer.setSize(w,h,false);
-  camera.aspect=w/h;
-  camera.updateProjectionMatrix();
-}
-resize();
-new ResizeObserver(resize).observe(canvas);
-
+// ─── Loop ─────────────────────────────────────────────────────────────────────
 function loop(){
   requestAnimationFrame(loop);
-  if(animOn){
-    animT+=0.005;
-    sph.theta+=0.0025;
-    updateCam();
-  }
-  renderer.render(scene,camera);
+  if(animOn){ sph.theta+=0.0025; updateCam(); }
+  rendL.render(sceneL,camera);
+  rendR.render(sceneR,camera);
 }
 loop();
 </script>
