@@ -364,38 +364,41 @@ function buildFixedEnd(){
 
 function buildTorqueArrow(){
   if(torque <= 0.001) return;
-  const phi = twistAngle(1);
 
-  // ── Solo arcAngle escala con el torque — el tamaño de la flecha es FIJO ──
-  const arcAngle = Math.PI * (0.55 + 1.30 * torque); // recorrido del arco (varía)
-  const tubeR    = 0.028;   // grosor fijo
-  const torusR   = 0.64;    // radio fijo
-  const coneBase = 0.075;   // base del cono fija
-  const coneH    = 0.150;   // altura del cono fija
+  const arcAngle = Math.PI * (0.55 + 1.30 * torque); // solo el recorrido varía
+  const tubeR    = 0.028;
+  const torusR   = 0.64;
+  const coneBase = 0.075;
+  const coneH    = 0.150;
   const yOff     = L/2 + 0.10;
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // Arco (segmentos de tubo reducidos: 6 y 44)
+  // Toro plano en XZ: rotation.x = PI/2 lleva XY → XZ; el arco arranca en +X
   const tGeo = new THREE.TorusGeometry(torusR, tubeR, 6, 44, arcAngle);
   const tor  = new THREE.Mesh(tGeo, matArrow);
-  tor.position.y  = yOff;
-  tor.rotation.x  = Math.PI/2;
-  tor.rotation.z  = phi - 0.22;
+  tor.position.y = yOff;
+  tor.rotation.x = Math.PI/2;
   root.add(tor);
 
-  // Cabeza de flecha
-  const endAng = phi - 0.22 + arcAngle;
-  const cx = torusR * Math.cos(endAng);
-  const cz = torusR * Math.sin(endAng);
+  // Extremo del arco en el plano XZ
+  // El toro en XZ va: θ=0 → +X, θ=π/2 → +Z, θ=π → -X ...
+  const cx = torusR * Math.cos(arcAngle);
+  const cz = torusR * Math.sin(arcAngle);
+
+  // Tangente en ese punto (dirección de avance del arco, antihorario en XZ)
+  const tangent = new THREE.Vector3(-Math.sin(arcAngle), 0, Math.cos(arcAngle));
+
   const cGeo = new THREE.ConeGeometry(coneBase, coneH, 10);
   const cone = new THREE.Mesh(cGeo, matArrow);
   cone.position.set(cx, yOff, cz);
-  const tangentAngle = endAng + Math.PI/2;
-  cone.rotation.set(0, 0, -(tangentAngle + Math.PI/2 + 0.3));
-  cone.rotateOnWorldAxis(new THREE.Vector3(0,1,0), endAng + Math.PI/2);
+  // setFromUnitVectors rota el eje del cono (+Y) hasta apuntar a 'tangent'
+  // sin pasar por Euler — evita gimbal lock y es inequívoco
+  cone.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    tangent
+  );
   root.add(cone);
 
-  // Anillo guía (segmentos reducidos: 4 tubo, 32 anillo)
+  // Anillo guía completo (referencia visual, siempre plano)
   const refGeo = new THREE.TorusGeometry(torusR, 0.006, 4, 32, Math.PI*2);
   const ref = new THREE.Mesh(refGeo, matArrowRef);
   ref.position.y = yOff;
